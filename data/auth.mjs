@@ -56,7 +56,7 @@ export async function createUser(userid, password, name, email) {
     url: "https://randomuser.me/api/portraits/men/29.jpg",
   };
   users = [user, ...users];
-  return users;
+  return user;
 }
 
 export async function login(userid, password) {
@@ -73,35 +73,3 @@ export async function findByUserid(userid) {
 export async function findByid(id) {
   return users.find((user) => user.id === id);
 }
-
-/*
-// 회원가입{전부}
-export async function create(userid, password, name, email) {
-  const finduser = users.find((user) => user.userid === userid);
-  if (!finduser) {
-    const user = {
-      id: Date.now().toString(),
-      password,
-      userid,
-      name,
-      email,
-    };
-    users = [user, ...users];
-    return users;
-  }else{
-    return {message :"이미 있는 아이디입니다."}
-  }
-}
-
-// 로그인{아이디,패스워드}
-export async function login(userid, password) {
-  const login = users.find((login) => login.userid === userid);
-  if (login.password == password) {
-    return login
-  }else {
-    return {message :"비밀번호가 틀렸습니다."}
-  }
-  
-}
-
-*/
