@@ -1,41 +1,63 @@
 import * as authRepository from "../data/auth.mjs";
+import * as bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
-/*
-// 회원가입
-export async function SignUp(req, res, next) {
-  const { userid, password, name, email } = req.body;
-  const data = await authRepository.create(userid, password, name, email);
-  res.status(200).json(data);
-}
+const secretKey = "abcdefg1234%^&*";
+const bcryptSaltRounds = 10;
+const jwtExpiresInDays = "2d";
 
-// 로그인
-export async function Login(req, res, next) {
-  const {user,password}= req.body
-  const login = await authRepository.login(userid, password);
-  if (!login) {
-    res.status(404).json({ meassage: `${userid}와 ${password}가 틀렸습니다.` });
-  } else {
-    res.status(200).json(login);
-  }
+async function createJwtToken(id) {
+  return jwt.sign({ id }, secretKey, { expiresIn: jwtExpiresInDays });
 }
-*/
 
 export async function signup(req, res, next) {
   const { userid, password, name, email } = req.body;
-  const users = await authRepository.createUser(userid, password, name, email);
+
+  // 회원 중복 체크
+  const found = await authRepository.findByUserid(userid);
+  if (found) {
+    return res
+      .status(409)
+      .json({ message: `${userid}과 동일한 아이디가 이미 존재합니다.` });
+  }
+
+  const hashed = bcrypt.hashSync(password, bcryptSaltRounds);
+  const users = await authRepository.createUser(userid, hashed, name, email);
+  const token = await createJwtToken(users.id);
+  console.log(token);
   if (users) {
-    res.status(201).json(users);
+    res.status(201).json({ token, userid });
   }
 }
 
 export async function login(req, res, next) {
   const { userid, password } = req.body;
-  const user = await authRepository.login(userid, password);
-  if (user) {
-    res.status(200).json(`${userid}님 로그인 완료!`);
-  } else {
-    res
-      .status(404)
-      .json({ message: `${userid}님 아이디 또는 비밀번호를 확인하세요!` });
+  const user = await authRepository.findByUserid(userid);
+  if (!user) {
+    res.status(402).json(`${userid} 아이디를 찾을 수 없음`);
   }
+  const isValidPassword = await bcrypt.compare(password, user.password);
+  if (!isValidPassword) {
+    return res.status(402).json({ message: "아이디 또는 비밀번호 확인" });
+  }
+
+  const token = await createJwtToken(user.id);
+  res.status(200).json({ token, userid });
+}
+
+export async function verify(req, res, next) {
+  const id = req.id;
+  if (id) {
+    res.status(200).json(id);
+  } else {
+    res.status(401).json({ message: "사용자 인증 실패" });
+  }
+}
+
+export async function me(req, res, next) {
+  const user = await authRepository.findByid(req.id);
+  if (!user) {
+    return res.status(404).json({ message: "일치하는 사용자가 없음" });
+  }
+  res.status(200).json({ token: req.token, userid: user.userid });
 }

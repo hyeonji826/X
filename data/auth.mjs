@@ -66,6 +66,14 @@ export async function login(userid, password) {
   return user;
 }
 
+export async function findByUserid(userid) {
+  return users.find((user) => user.userid === userid);
+}
+
+export async function findByid(id) {
+  return users.find((user) => user.id === id);
+}
+
 /*
 // 회원가입{전부}
 export async function create(userid, password, name, email) {
