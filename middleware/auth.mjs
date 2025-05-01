@@ -38,6 +38,7 @@ export const isAuth = async (req, res, next) => {
       return res.status(401).json(AUTH_ERROR);
     }
     console.log(decoded.id);
+    console.log("디코딩된 토큰",decoded)
     const user = await authRepository.findByid(decoded.id);
     if (!user) {
       console.log("아이디 없음");

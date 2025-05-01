@@ -1,3 +1,4 @@
+// signup.html
 async function SignUp(event) {
   event.preventDefault();
   const signup_userid = document.getElementById("signup_userid").value.trim();
@@ -27,6 +28,7 @@ async function SignUp(event) {
     if (response.ok) {
       alert("회원가입 성공: " + data.message);
       document.getElementById("result").innerText = JSON.stringify(data);
+      window.location.href = "./login.html";
     } else {
       alert("회원가입 실패: " + data.message);
     }
@@ -35,6 +37,7 @@ async function SignUp(event) {
   }
 }
 
+// login.html
 async function Login(event) {
   event.preventDefault();
   const login_userid = document.getElementById("login_userid").value.trim();
@@ -54,12 +57,51 @@ async function Login(event) {
     const data = await response.json();
 
     if (response.ok) {
-      alert("로그인 성공: " + data.message);
+      alert("로그인 성공" + data.message);
       document.getElementById("result").innerText = JSON.stringify(data);
+      localStorage.setItem("userid", login_userid);
+      localStorage.setItem("token", data.token);
+      window.location.href = "./post.html";
     } else {
-      alert("로그인 실패: " + data.message);
+      alert("로그인 실패");
     }
   } catch (err) {
-    alert("서버 연결 실패: " + err.message);
+    alert("서버 연결 실패");
+  }
+}
+
+// post.html
+if (window.location.pathname.endsWith("post.html")) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "login.html";
+  } else {
+    fetch("http://localhost:8080/posts", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("게시물 가져오기 실패");
+        return res.json();
+      })
+      .then((posts) => {
+        const listEl = document.getElementById("postsList");
+        posts.forEach((post) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<img src="${post.url}" alt="${
+            post.name
+          }" width="50" style="vertical-align:middle; margin-right:8px;"/>
+          <strong>${post.name}(@${post.userid})</strong>
+          <p>${post.text}</p>
+          <small>${new Date(post.createdAt).toLocaleString()}</small>
+        `;
+          listEl.appendChild(li);
+        });
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("게시물 불러오는 중 오류 발생");
+      });
   }
 }
