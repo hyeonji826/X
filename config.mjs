@@ -1,25 +1,13 @@
-import dotenv from "dotenv";
-
+import dotenv from 'dotenv';
 dotenv.config();
 
-function required(key, defaultValue = undefined) {
-  // process : Node.js의 전반적인 과정이 들어가있음
-  const value = process.env[key] || defaultValue;
-  if (value == null) {
-    throw new Error(`키 ${key}는 undefined!!`);
-  }
-  return value;
-}
-
-export const config = {
-  jwt: {
-    secretKey: required("JWT_SECRET"),
-    expiresInsec: parseInt(required("JWT_EXPIRES_SEC", 86400)),
+export default {
+  db: {
+    host:     process.env.DB_HOST,
+    user:     process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
   },
-  bcrypt: {
-    saltRounds: parseInt(required("BCRYPT_SALT_ROUNDS", 10)),
-  },
-  host: {
-    port: parseInt(required("HOST_PORT", 8080)),
-  },
+  jwtSecret: process.env.JWT_SECRET,
+  port:      process.env.PORT || 3000,
 };

@@ -1,64 +1,41 @@
-import * as authRepository from "../data/auth.mjs";
-import * as bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { config } from "../config.mjs";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { db } from '../models/db.mjs';
+import config from '../config.mjs';
 
-const secretKey = config.jwt.secretKey;
-const bcryptSaltRounds = config.bcrypt.saltRounds;
-const jwtExpiresInDays = config.jwt.expiresInsec;
+export async function signup(req, res) {
+  const { username, password } = req.body;
+  const [exists] = await db.execute(
+    'SELECT user_id FROM users WHERE username = ?', [username]
+  );
+  if (exists.length)
+    return res.status(409).json({ message: '이미 존재하는 아이디입니다.' });
 
-async function createJwtToken(id) {
-  return jwt.sign({ id }, secretKey, { expiresIn: jwtExpiresInDays });
+  const hash = await bcrypt.hash(password, 10);
+  await db.execute(
+    'INSERT INTO users (username, password) VALUES (?, ?)',
+    [username, hash]
+  );
+  res.status(201).json({ message: '회원가입 성공' });
 }
 
-export async function signup(req, res, next) {
-  const { userid, password, name, email } = req.body;
+export async function login(req, res) {
+  const { username, password } = req.body;
+  const [rows] = await db.execute(
+    'SELECT * FROM users WHERE username = ?', [username]
+  );
+  if (!rows.length)
+    return res.status(401).json({ message: '사용자를 찾을 수 없습니다.' });
 
-  // 회원 중복 체크
-  const found = await authRepository.findByUserid(userid);
-  if (found) {
-    return res
-      .status(409)
-      .json({ message: `${userid}과 동일한 아이디가 이미 존재합니다.` });
-  }
+  const user = rows[0];
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok)
+    return res.status(401).json({ message: '비밀번호가 틀렸습니다.' });
 
-  const hashed = bcrypt.hashSync(password, bcryptSaltRounds);
-  const users = await authRepository.createUser(userid, hashed, name, email);
-  const token = await createJwtToken(users.id);
-  console.log(token);
-  if (users) {
-    res.status(201).json({ message:'회원가입 완료!',token, userid });
-  }
-}
-
-export async function login(req, res, next) {
-  const { userid, password } = req.body;
-  const user = await authRepository.findByUserid(userid);
-  if (!user) {
-    res.status(402).json(`${userid} 아이디를 찾을 수 없음`);
-  }
-  const isValidPassword = await bcrypt.compare(password, user.password);
-  if (!isValidPassword) {
-    return res.status(402).json({ message: "아이디 또는 비밀번호 확인" });
-  }
-
-  const token = await createJwtToken(user.id);
-  res.status(200).json({ token, userid });
-}
-
-export async function verify(req, res, next) {
-  const id = req.id;
-  if (id) {
-    res.status(200).json(id);
-  } else {
-    res.status(401).json({ message: "사용자 인증 실패" });
-  }
-}
-
-export async function me(req, res, next) {
-  const user = await authRepository.findByid(req.id);
-  if (!user) {
-    return res.status(404).json({ message: "일치하는 사용자가 없음" });
-  }
-  res.status(200).json({ token: req.token, userid: user.userid });
+  const token = jwt.sign(
+    { user_id: user.user_id, username: user.username },
+    config.jwtSecret,
+    { expiresIn: '1h' }
+  );
+  res.json({ token });
 }
