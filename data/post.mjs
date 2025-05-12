@@ -1,63 +1,57 @@
-import { getPosts } from "../db/database.mjs";
-import MongoDb, { ReturnDocument } from "mongodb";
+import Mongoose from "mongoose";
 import * as UserRepository from "./auth.mjs";
-const ObjectID = MongoDb.ObjectId;
+import { useVirtualId } from "../db/database.mjs";
+
+const postSchema = new Mongoose.Schema(
+  {
+    userid: { type: String, require: true },
+    name: { type: String, require: true },
+    url: String,
+    text: { type: String, require: true },
+    userId: { type: String, require: true },
+  },
+  { timestamps: true }
+);
+
+useVirtualId(postSchema);
+
+const Post = Mongoose.model("Post", postSchema);
 
 // 모든 포스트를 리턴
 export async function getAll() {
-  return getPosts().find().sort({ createAt: -1 }).toArray();
+  return Post.find().sort({ createdAt: -1 });
 }
 
 // 사용자 아이디(userid)에 대한 포스트를 리턴
 // 조건을 만족하는 모든 요소를 배열로 리턴
 export async function getAllByUserid(userid) {
-  return getPosts().find({ userid }).sort({ createAt: -1 }).toArray();
+  return Post.find({ userid }).sort({ created: -1 });
 }
 
 // 글 번호(id)에 대한 포스트를 리턴
 // 조건을 만족하는 첫 번째 요소 하나를 리턴
 export async function getById(id) {
-  return getPosts()
-    .find({ _id: new ObjectID(id) })
-    .next()
-    .then(mapOptionalPost);
+  return Post.findById(id);
 }
 
 // 포스트 작성
-export async function create(text, id) {
-  console.log("id:", id);
-  return UserRepository.findByid(id).then((user) =>
-    getPosts()
-      .insertOne({
-        text,
-        createAt: new Date(),
-        useridx: user.id,
-        name: user.name,
-        userid: user.userid,
-        url: user.url,
-      })
-      .then((result) => {
-        return getPosts().findOne({ _id: result.insertedId });
-      })
+export async function create(text, userId) {
+  return UserRepository.findByid(userId).then((user) =>
+    new Post({
+      userid: user.userid,
+      name: user.name,
+      userId,
+      text,
+    }).save()
   );
 }
 
 // post 변경
 export async function update(id, text) {
-  return getPosts()
-    .findOneAndUpdate(
-      { _id: new ObjectID(id) },
-      { $set: { text } },
-      { returnDocument: "after" }
-    )
-    .then((result) => result);
+  return Post.findByIdAndUpdate(id, { text }, { returnDocument: "after" });
 }
 
 // 포스트 삭제
 export async function remove(id) {
-  return getPosts().deleteOne({ _id: new ObjectID(id) });
-}
-
-function mapOptionalPost(post) {
-  return post ? { ...post, id: post._id.toString() } : post;
+  return Post.findByIdAndDelete(id);
 }

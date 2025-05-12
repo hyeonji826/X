@@ -1,36 +1,33 @@
-import MongoDb, { ObjectId } from "mongodb";
-import { getUsers } from "../db/database.mjs";
+import Mongoose from "mongoose";
+import { useVirtualId } from "../db/database.mjs";
 
-const ObjectID = MongoDb.ObjectId;
+// 스키마 만드는 법
+const userSchema = new Mongoose.Schema(
+  {
+    userid: { type: String, require: true },
+    name: { type: String, require: true },
+    email: { type: String, require: true },
+    password: { type: String, require: true },
+    url: String,
+  },
+  { versionKey: false }
+);
 
-export async function getAll() {
-  return users;
-}
+useVirtualId(userSchema);
 
+// 컬렉션은 자동으로 복수형 s가 붙기때문에 단수형으로 이름 지어주는 것이 좋다.
+// User --> Users
+const User = Mongoose.model("User", userSchema);
+
+// 회원가입(사용자 생성)
 export async function createUser(user) {
-  return getUsers()
-    .insertOne(user)
-    .then((result) => result.insertedId.toString());
-}
-
-export async function login(userid, password) {
-  const user = users.find(
-    (user) => user.userid === userid && user.password === password
-  );
-  return user;
+  return new User(user).save().then((data) => data.id);
 }
 
 export async function findByUserid(userid) {
-  return getUsers().find({ userid }).next().then(mapOptionalUser);
+  return User.findOne({ userid });
 }
 
 export async function findByid(id) {
-  return getUsers()
-    .find({ _id: new ObjectID(id) })
-    .next()
-    .then(mapOptionalUser);
-}
-
-function mapOptionalUser(user) {
-  return user ? { ...user, id: user._id.toString() } : user;
+  return User.findById(id);
 }
